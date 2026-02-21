@@ -9,7 +9,8 @@
     "prepare": "husky || true",
     "release": "commit-and-tag-version",
     "release:minor": "commit-and-tag-version --release-as minor",
-    "release:major": "commit-and-tag-version --release-as major"
+    "release:major": "commit-and-tag-version --release-as major",
+    "push": "git push && git push --tags"
   },
   "dependencies": {
     "express": "^4.21.2",
