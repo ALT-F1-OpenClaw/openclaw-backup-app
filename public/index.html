@@ -111,6 +111,7 @@
     <p class="subtitle">Configuration backup with redacted secrets</p>
     <p id="version" class="version"></p>
     <button id="btn" onclick="doBackup()">Backup Configuration</button>
+    <button id="push-btn" onclick="doPush()" style="background:#8957e5;border-color:#a371f7;margin-top:0.75rem;">Push to GitHub</button>
     <button id="dl-btn" onclick="doDownload()" style="background:#1f6feb;border-color:#388bfd;margin-top:0.75rem;">Download Backup</button>
     <div id="status" class="status"></div>
   </div>
@@ -153,6 +154,25 @@
             '<div class="time">' + new Date(data.lastBackup.time).toLocaleString() + "</div>";
         }
       } catch {}
+    }
+
+    async function doPush() {
+      const pushBtn = document.getElementById("push-btn");
+      pushBtn.disabled = true;
+      pushBtn.innerHTML = '<span class="spinner"></span>Pushing...';
+
+      try {
+        const res = await fetch("/api/push", { method: "POST" });
+        const data = await res.json();
+        status.className = "status " + (res.ok ? "success" : "error");
+        status.innerHTML = data.message;
+      } catch (err) {
+        status.className = "status error";
+        status.innerHTML = "Push failed: " + err.message;
+      }
+
+      pushBtn.disabled = false;
+      pushBtn.textContent = "Push to GitHub";
     }
 
     function doDownload() {

@@ -6,7 +6,7 @@ COPY server.js ./
 COPY public/ ./public/
 
 FROM node:22-alpine
-RUN apk add --no-cache git tini
+RUN apk add --no-cache git tini openssh-client
 WORKDIR /app
 COPY --from=build /app ./
 EXPOSE 3100

@@ -10,6 +10,9 @@ const PORT = 3100;
 const BACKUP_DIR = "/backup";
 const CONFIG_DIR = "/config";
 const WORKSPACE_DIR = "/workspace";
+const REMOTE_URL = process.env.BACKUP_REMOTE_URL || "";
+const SSH_KEY_NAME = process.env.SSH_KEY_NAME || "id_ed25519";
+const GIT_SSH_COMMAND = `ssh -i /ssh/${SSH_KEY_NAME} -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/tmp/known_hosts`;
 
 const SENSITIVE_PATTERN = /token|key|password|secret/i;
 
@@ -135,6 +138,31 @@ app.post("/api/backup", async (_req, res) => {
   } catch (err) {
     lastBackup = { time: new Date().toISOString(), status: "error", message: err.message };
     res.status(500).json(lastBackup);
+  }
+});
+
+app.post("/api/push", async (_req, res) => {
+  try {
+    if (!REMOTE_URL) {
+      return res.status(400).json({ status: "error", message: "BACKUP_REMOTE_URL not configured" });
+    }
+
+    const git = simpleGit(BACKUP_DIR).env("GIT_SSH_COMMAND", GIT_SSH_COMMAND);
+    await ensureGitRepo(git);
+
+    const remotes = await git.getRemotes(true);
+    const hasOrigin = remotes.some((r) => r.name === "origin");
+
+    if (!hasOrigin) {
+      await git.addRemote("origin", REMOTE_URL);
+    } else {
+      await git.remote(["set-url", "origin", REMOTE_URL]);
+    }
+
+    await git.push("origin", "main", ["--set-upstream"]);
+    res.json({ status: "success", message: `Pushed to ${REMOTE_URL}` });
+  } catch (err) {
+    res.status(500).json({ status: "error", message: err.message });
   }
 });
 
