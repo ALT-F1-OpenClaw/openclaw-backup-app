@@ -2,6 +2,7 @@ const express = require("express");
 const simpleGit = require("simple-git");
 const fs = require("fs/promises");
 const path = require("path");
+const { execSync } = require("child_process");
 const { version } = require("./package.json");
 
 const app = express();
@@ -134,6 +135,26 @@ app.post("/api/backup", async (_req, res) => {
   } catch (err) {
     lastBackup = { time: new Date().toISOString(), status: "error", message: err.message };
     res.status(500).json(lastBackup);
+  }
+});
+
+app.get("/api/download", async (_req, res) => {
+  try {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const filename = `openclaw-backup-${timestamp}.tar.gz`;
+    
+    execSync(`tar -czf /tmp/${filename} -C ${BACKUP_DIR} .`, { timeout: 30000 });
+    
+    res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
+    res.setHeader("Content-Type", "application/gzip");
+    
+    const stream = require("fs").createReadStream(`/tmp/${filename}`);
+    stream.pipe(res);
+    stream.on("end", () => {
+      require("fs").unlinkSync(`/tmp/${filename}`);
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

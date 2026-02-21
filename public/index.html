@@ -111,6 +111,7 @@
     <p class="subtitle">Configuration backup with redacted secrets</p>
     <p id="version" class="version"></p>
     <button id="btn" onclick="doBackup()">Backup Configuration</button>
+    <button id="dl-btn" onclick="doDownload()" style="background:#1f6feb;border-color:#388bfd;margin-top:0.75rem;">Download Backup</button>
     <div id="status" class="status"></div>
   </div>
 
@@ -152,6 +153,34 @@
             '<div class="time">' + new Date(data.lastBackup.time).toLocaleString() + "</div>";
         }
       } catch {}
+    }
+
+    function doDownload() {
+      const dlBtn = document.getElementById("dl-btn");
+      dlBtn.disabled = true;
+      dlBtn.textContent = "Preparing...";
+      
+      fetch("/api/download")
+        .then(res => {
+          if (!res.ok) throw new Error("Download failed");
+          return res.blob();
+        })
+        .then(blob => {
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `openclaw-backup-${new Date().toISOString().replace(/[:.]/g, "-")}.tar.gz`;
+          a.click();
+          URL.revokeObjectURL(url);
+        })
+        .catch(err => {
+          status.className = "status error";
+          status.innerHTML = "Download failed: " + err.message;
+        })
+        .finally(() => {
+          dlBtn.disabled = false;
+          dlBtn.textContent = "Download Backup";
+        });
     }
 
     loadStatus();
