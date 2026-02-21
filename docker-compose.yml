@@ -12,8 +12,8 @@ services:
       - ~/.ssh:/ssh:ro
     environment:
       - BACKUP_REMOTE_URL=git@github.com:ALT-F1-OpenClaw/openclaw-backup-data.git
-      - SSH_KEY_NAME=github-abdelkrim-xps9320-WSL-ubuntu-24.04-2026-02-21
-      - GIT_SSH_COMMAND=ssh -i /ssh/github-abdelkrim-xps9320-WSL-ubuntu-24.04-2026-02-21 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/tmp/known_hosts
+      - SSH_KEY_NAME=openclaw-backup-bot-2026-02-21
+      - GIT_SSH_COMMAND=ssh -i /ssh/openclaw-backup-bot-2026-02-21 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/tmp/known_hosts
     read_only: true
     tmpfs:
       - /tmp
