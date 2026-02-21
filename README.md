@@ -2,6 +2,8 @@
 
 Minimalist web app for backing up OpenClaw configuration with automatic secret redaction, running in a hardened Docker container.
 
+![OpenClaw Backup screenshot](docs/screenshot.png)
+
 ## Features
 
 - **One-click backup** via web UI on `http://localhost:3100`
