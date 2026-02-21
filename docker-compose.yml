@@ -1,0 +1,21 @@
+services:
+  openclaw-backup:
+    build: .
+    container_name: openclaw-backup
+    ports:
+      - "3100:3100"
+    volumes:
+      - ~/.openclaw:/config:ro
+      - ~/.openclaw/workspace:/workspace:ro
+      - backup-data:/backup
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    restart: unless-stopped
+
+volumes:
+  backup-data:

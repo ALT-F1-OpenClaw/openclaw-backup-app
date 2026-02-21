@@ -1,0 +1,13 @@
+{
+  "name": "openclaw-backup-app",
+  "version": "1.0.0",
+  "description": "Minimalist backup app for OpenClaw configuration",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "simple-git": "^3.27.0"
+  }
+}

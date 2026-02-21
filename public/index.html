@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenClaw Backup</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+      background: #0d1117;
+      color: #c9d1d9;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+
+    .container {
+      text-align: center;
+      max-width: 420px;
+      padding: 2rem;
+    }
+
+    h1 {
+      font-size: 1.4rem;
+      color: #58a6ff;
+      margin-bottom: 0.5rem;
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: #8b949e;
+      margin-bottom: 2rem;
+    }
+
+    button {
+      background: #238636;
+      color: #fff;
+      border: 1px solid #2ea043;
+      padding: 12px 32px;
+      font-size: 1rem;
+      font-family: inherit;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    button:hover { background: #2ea043; }
+
+    button:disabled {
+      background: #21262d;
+      border-color: #30363d;
+      color: #484f58;
+      cursor: not-allowed;
+    }
+
+    .status {
+      margin-top: 2rem;
+      padding: 1rem;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      display: none;
+    }
+
+    .status.success {
+      display: block;
+      background: #0d1f0d;
+      border: 1px solid #238636;
+      color: #3fb950;
+    }
+
+    .status.error {
+      display: block;
+      background: #1f0d0d;
+      border: 1px solid #da3633;
+      color: #f85149;
+    }
+
+    .status .time {
+      color: #8b949e;
+      font-size: 0.75rem;
+      margin-top: 0.5rem;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      border: 2px solid #484f58;
+      border-top-color: #58a6ff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      vertical-align: middle;
+      margin-right: 8px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>OpenClaw Backup</h1>
+    <p class="subtitle">Configuration backup with redacted secrets</p>
+    <button id="btn" onclick="doBackup()">Backup Configuration</button>
+    <div id="status" class="status"></div>
+  </div>
+
+  <script>
+    const btn = document.getElementById("btn");
+    const status = document.getElementById("status");
+
+    async function doBackup() {
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Backing up...';
+      status.className = "status";
+
+      try {
+        const res = await fetch("/api/backup", { method: "POST" });
+        const data = await res.json();
+
+        status.className = "status " + (res.ok ? "success" : "error");
+        status.innerHTML = data.message +
+          '<div class="time">' + new Date(data.time).toLocaleString() + "</div>";
+      } catch (err) {
+        status.className = "status error";
+        status.innerHTML = "Connection failed";
+      }
+
+      btn.disabled = false;
+      btn.textContent = "Backup Configuration";
+    }
+
+    async function loadStatus() {
+      try {
+        const res = await fetch("/api/status");
+        const data = await res.json();
+        if (data.lastBackup) {
+          status.className = "status " + data.lastBackup.status;
+          status.innerHTML = data.lastBackup.message +
+            '<div class="time">' + new Date(data.lastBackup.time).toLocaleString() + "</div>";
+        }
+      } catch {}
+    }
+
+    loadStatus();
+  </script>
+</body>
+</html>
