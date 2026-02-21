@@ -32,6 +32,12 @@
     .subtitle {
       font-size: 0.85rem;
       color: #8b949e;
+      margin-bottom: 0.25rem;
+    }
+
+    .version {
+      font-size: 0.75rem;
+      color: #484f58;
       margin-bottom: 2rem;
     }
 
@@ -103,6 +109,7 @@
   <div class="container">
     <h1>OpenClaw Backup</h1>
     <p class="subtitle">Configuration backup with redacted secrets</p>
+    <p id="version" class="version"></p>
     <button id="btn" onclick="doBackup()">Backup Configuration</button>
     <div id="status" class="status"></div>
   </div>
@@ -136,6 +143,9 @@
       try {
         const res = await fetch("/api/status");
         const data = await res.json();
+        if (data.version) {
+          document.getElementById("version").textContent = "v" + data.version;
+        }
         if (data.lastBackup) {
           status.className = "status " + data.lastBackup.status;
           status.innerHTML = data.lastBackup.message +

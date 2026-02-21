@@ -1,13 +1,14 @@
 services:
   openclaw-backup:
     build: .
+    user: "${UID:-1000}:${GID:-1000}"
     container_name: openclaw-backup
     ports:
       - "3100:3100"
     volumes:
       - ~/.openclaw:/config:ro
       - ~/.openclaw/workspace:/workspace:ro
-      - backup-data:/backup
+      - ./backup-data:/backup
     read_only: true
     tmpfs:
       - /tmp
@@ -17,5 +18,3 @@ services:
       - ALL
     restart: unless-stopped
 
-volumes:
-  backup-data:

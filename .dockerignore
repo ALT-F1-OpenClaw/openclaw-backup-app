@@ -6,3 +6,6 @@ README.md
 *.md
 .dockerignore
 docker-compose.yml
+backup-data
+.husky
+commitlint.config.js

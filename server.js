@@ -2,6 +2,7 @@ const express = require("express");
 const simpleGit = require("simple-git");
 const fs = require("fs/promises");
 const path = require("path");
+const { version } = require("./package.json");
 
 const app = express();
 const PORT = 3100;
@@ -31,8 +32,8 @@ async function ensureGitRepo(git) {
   const isRepo = await git.checkIsRepo().catch(() => false);
   if (!isRepo) {
     await git.init();
-    await git.addConfig("user.email", "backup@openclaw.local");
-    await git.addConfig("user.name", "OpenClaw Backup");
+    await git.addConfig("user.email", "abo+openclaw_backup_app@alt-f1.be");
+    await git.addConfig("user.name", "Abdelkrim BOUJRAF");
   }
 }
 
@@ -108,7 +109,7 @@ let lastBackup = null;
 app.use(express.static("public"));
 
 app.get("/api/status", (_req, res) => {
-  res.json({ lastBackup });
+  res.json({ version, lastBackup });
 });
 
 app.post("/api/backup", async (_req, res) => {
