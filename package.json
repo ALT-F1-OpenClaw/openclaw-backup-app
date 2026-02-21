@@ -10,7 +10,7 @@
     "release": "commit-and-tag-version",
     "release:minor": "commit-and-tag-version --release-as minor",
     "release:major": "commit-and-tag-version --release-as major",
-    "push": "git push && git push --tags"
+    "push": "git push --follow-tags origin main"
   },
   "dependencies": {
     "express": "^4.21.2",
