@@ -1,6 +1,6 @@
 {
   "name": "openclaw-backup-app",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "Minimalist backup app for OpenClaw configuration",
   "license": "MIT",
   "main": "server.js",
