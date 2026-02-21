@@ -143,7 +143,7 @@ app.get("/api/download", async (_req, res) => {
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const filename = `openclaw-backup-${timestamp}.tar.gz`;
     
-    execSync(`tar -czf /tmp/${filename} -C ${BACKUP_DIR} .`, { timeout: 30000 });
+    execSync(`tar -czf /tmp/${filename} --exclude='.git' -C ${BACKUP_DIR} .`, { timeout: 30000 });
     
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.setHeader("Content-Type", "application/gzip");
