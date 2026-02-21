@@ -150,6 +150,12 @@ app.post("/api/push", async (_req, res) => {
     const git = simpleGit(BACKUP_DIR).env("GIT_SSH_COMMAND", GIT_SSH_COMMAND);
     await ensureGitRepo(git);
 
+    // Ensure there's at least one commit
+    const log = await git.log().catch(() => null);
+    if (!log || !log.total) {
+      return res.status(400).json({ status: "error", message: "No backups yet. Run a backup first." });
+    }
+
     const remotes = await git.getRemotes(true);
     const hasOrigin = remotes.some((r) => r.name === "origin");
 
@@ -159,7 +165,9 @@ app.post("/api/push", async (_req, res) => {
       await git.remote(["set-url", "origin", REMOTE_URL]);
     }
 
-    await git.push("origin", "main", ["--set-upstream"]);
+    const branchSummary = await git.branchLocal();
+    const branch = branchSummary.current || "master";
+    await git.push("origin", branch, ["--set-upstream"]);
     res.json({ status: "success", message: `Pushed to ${REMOTE_URL}` });
   } catch (err) {
     res.status(500).json({ status: "error", message: err.message });
