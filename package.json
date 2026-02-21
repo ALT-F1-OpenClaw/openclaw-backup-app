@@ -1,13 +1,23 @@
 {
   "name": "openclaw-backup-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Minimalist backup app for OpenClaw configuration",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "prepare": "husky || true",
+    "release": "commit-and-tag-version",
+    "release:minor": "commit-and-tag-version --release-as minor",
+    "release:major": "commit-and-tag-version --release-as major"
   },
   "dependencies": {
     "express": "^4.21.2",
     "simple-git": "^3.27.0"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^20.4.2",
+    "@commitlint/config-conventional": "^20.4.2",
+    "commit-and-tag-version": "^12.6.1",
+    "husky": "^9.1.7"
   }
 }
