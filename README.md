@@ -230,11 +230,15 @@ curl http://127.0.0.1:3100/api/status
 
 ### Helper commands
 
+Versioned helper scripts (recommended):
+
 ```bash
-backup-dev-restart
-backup-staging-restart
-backup-all-restart
+./ops/backup-dev-restart.sh
+./ops/backup-staging-restart.sh
+./ops/backup-all-restart.sh
 ```
+
+(Optional local aliases can call these scripts.)
 
 ## Push conflict auto-recovery (backup-data)
 
