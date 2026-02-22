@@ -7,6 +7,7 @@ Minimalist web app for backing up OpenClaw configuration with automatic secret r
 ## Features
 
 - **One-click backup** via web UI on `http://localhost:3100`
+- **Confirmation prompts** before Backup / Push / Download actions
 - **Automatic secret redaction** — JSON fields matching `token`, `key`, `password`, or `secret` are replaced with `REDACTED`
 - **Git-versioned backups** — each backup is a git commit in `./backup-data/`, giving you full history and diffs
 - **Hardened container** — read-only filesystem, all capabilities dropped, no-new-privileges, non-root user
@@ -18,7 +19,11 @@ Minimalist web app for backing up OpenClaw configuration with automatic secret r
 | `~/.openclaw/openclaw.json` | `backup-data/config/openclaw.json` | Secrets redacted |
 | `~/.openclaw/node.json` | `backup-data/config/node.json` | Copied as-is |
 | `~/.openclaw/workspace/*.md` | `backup-data/workspace/` | MEMORY, SOUL, USER, TOOLS, IDENTITY, AGENTS, HEARTBEAT |
-| `~/.openclaw/workspace/memory/*.md` | `backup-data/workspace/memory/` | All memory files |
+| `~/.openclaw/workspace/memory/*.{md,json}` | `backup-data/workspace/memory/` | Memory notes + state json files |
+| `~/.openclaw/agents/main/agent/auth-profiles.json` | `backup-data/config/agent/auth-profiles.json` | Secrets redacted |
+| `~/.openclaw/agents/main/agent/auth.json` | `backup-data/config/agent/auth.json` | Secrets redacted |
+| `~/.openclaw/identity/device-auth.json` | `backup-data/config/identity/device-auth.json` | Secrets redacted |
+| `~/.openclaw/scripts/**/*.{sh,md}` | `backup-data/scripts/` | Automation scripts + docs |
 
 ## Quick start
 

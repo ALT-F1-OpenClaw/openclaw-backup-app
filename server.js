@@ -10,11 +10,12 @@ const PORT = 3100;
 const BACKUP_DIR = "/backup";
 const CONFIG_DIR = "/config";
 const WORKSPACE_DIR = "/workspace";
+// OpenClaw home is mounted at /config inside the container.
 const REMOTE_URL = process.env.BACKUP_REMOTE_URL || "";
 const SSH_KEY_NAME = process.env.SSH_KEY_NAME || "id_ed25519";
 const GIT_SSH_COMMAND = `ssh -i /ssh/${SSH_KEY_NAME} -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/tmp/known_hosts`;
 
-const SENSITIVE_PATTERN = /token|key|password|secret/i;
+const SENSITIVE_PATTERN = /token|key|password|secret|access|refresh|authorization|cookie/i;
 
 function redactJson(obj) {
   if (Array.isArray(obj)) return obj.map(redactJson);
@@ -54,6 +55,22 @@ async function copyRedactedJson(src, dest) {
   await fs.writeFile(dest, JSON.stringify(redacted, null, 2) + "\n");
 }
 
+async function copyIfExists(src, dest) {
+  try {
+    await copyFile(src, dest);
+  } catch (err) {
+    if (err.code !== "ENOENT") throw err;
+  }
+}
+
+async function copyRedactedJsonIfExists(src, dest) {
+  try {
+    await copyRedactedJson(src, dest);
+  } catch (err) {
+    if (err.code !== "ENOENT") throw err;
+  }
+}
+
 const WORKSPACE_FILES = [
   "MEMORY.md",
   "SOUL.md",
@@ -65,44 +82,69 @@ const WORKSPACE_FILES = [
 ];
 
 async function collectFiles() {
-  // Redact and copy openclaw.json
-  const openclawSrc = path.join(CONFIG_DIR, "openclaw.json");
-  try {
-    await copyRedactedJson(openclawSrc, path.join(BACKUP_DIR, "config", "openclaw.json"));
-  } catch (err) {
-    if (err.code !== "ENOENT") throw err;
-  }
+  // Core OpenClaw config (redacted)
+  await copyRedactedJsonIfExists(
+    path.join(CONFIG_DIR, "openclaw.json"),
+    path.join(BACKUP_DIR, "config", "openclaw.json")
+  );
 
-  // Copy node.json as-is
-  const nodeSrc = path.join(CONFIG_DIR, "node.json");
-  try {
-    await copyFile(nodeSrc, path.join(BACKUP_DIR, "config", "node.json"));
-  } catch (err) {
-    if (err.code !== "ENOENT") throw err;
-  }
+  // Node file (no known secrets)
+  await copyIfExists(
+    path.join(CONFIG_DIR, "node.json"),
+    path.join(BACKUP_DIR, "config", "node.json")
+  );
 
-  // Copy workspace top-level files
+  // Auth/session identity files (always redacted)
+  await copyRedactedJsonIfExists(
+    path.join(CONFIG_DIR, "agents", "main", "agent", "auth-profiles.json"),
+    path.join(BACKUP_DIR, "config", "agent", "auth-profiles.json")
+  );
+  await copyRedactedJsonIfExists(
+    path.join(CONFIG_DIR, "agents", "main", "agent", "auth.json"),
+    path.join(BACKUP_DIR, "config", "agent", "auth.json")
+  );
+  await copyRedactedJsonIfExists(
+    path.join(CONFIG_DIR, "identity", "device-auth.json"),
+    path.join(BACKUP_DIR, "config", "identity", "device-auth.json")
+  );
+
+  // Workspace top-level files
   for (const file of WORKSPACE_FILES) {
-    const src = path.join(WORKSPACE_DIR, file);
-    try {
-      await copyFile(src, path.join(BACKUP_DIR, "workspace", file));
-    } catch (err) {
-      if (err.code !== "ENOENT") throw err;
-    }
+    await copyIfExists(path.join(WORKSPACE_DIR, file), path.join(BACKUP_DIR, "workspace", file));
   }
 
-  // Copy workspace/memory/*.md
+  // Workspace/memory/*.md and *.json
   const memoryDir = path.join(WORKSPACE_DIR, "memory");
   try {
     const entries = await fs.readdir(memoryDir);
     for (const entry of entries) {
-      if (entry.endsWith(".md")) {
-        await copyFile(
+      if (entry.endsWith(".md") || entry.endsWith(".json")) {
+        await copyIfExists(
           path.join(memoryDir, entry),
           path.join(BACKUP_DIR, "workspace", "memory", entry)
         );
       }
     }
+  } catch (err) {
+    if (err.code !== "ENOENT") throw err;
+  }
+
+  // Useful automation scripts under ~/.openclaw/scripts
+  const scriptsDir = path.join(CONFIG_DIR, "scripts");
+  async function copyScriptsRecursive(srcDir, destDir) {
+    const entries = await fs.readdir(srcDir, { withFileTypes: true });
+    for (const entry of entries) {
+      const src = path.join(srcDir, entry.name);
+      const dest = path.join(destDir, entry.name);
+      if (entry.isDirectory()) {
+        await copyScriptsRecursive(src, dest);
+      } else if (entry.isFile() && (entry.name.endsWith(".sh") || entry.name.endsWith(".md"))) {
+        await copyIfExists(src, dest);
+      }
+    }
+  }
+  try {
+    await copyScriptsRecursive(scriptsDir, path.join(BACKUP_DIR, "scripts"));
   } catch (err) {
     if (err.code !== "ENOENT") throw err;
   }
@@ -178,12 +220,12 @@ app.get("/api/download", async (_req, res) => {
   try {
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const filename = `openclaw-backup-${timestamp}.tar.gz`;
-    
+
     execSync(`tar -czf /tmp/${filename} --exclude='.git' -C ${BACKUP_DIR} .`, { timeout: 30000 });
-    
+
     res.setHeader("Content-Disposition", `attachment; filename="${filename}"`);
     res.setHeader("Content-Type", "application/gzip");
-    
+
     const stream = require("fs").createReadStream(`/tmp/${filename}`);
     stream.pipe(res);
     stream.on("end", () => {

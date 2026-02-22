@@ -121,6 +121,9 @@
     const status = document.getElementById("status");
 
     async function doBackup() {
+      const ok = window.confirm("Create a new backup commit now? This will snapshot current OpenClaw config/workspace files.");
+      if (!ok) return;
+
       btn.disabled = true;
       btn.innerHTML = '<span class="spinner"></span>Backing up...';
       status.className = "status";
@@ -157,6 +160,9 @@
     }
 
     async function doPush() {
+      const ok = window.confirm("Push backup-data to GitHub now?\n\nThis will publish the latest redacted backup commit to the remote repository.");
+      if (!ok) return;
+
       const pushBtn = document.getElementById("push-btn");
       pushBtn.disabled = true;
       pushBtn.innerHTML = '<span class="spinner"></span>Pushing...';
@@ -176,6 +182,9 @@
     }
 
     function doDownload() {
+      const ok = window.confirm("Generate and download a backup archive now?");
+      if (!ok) return;
+
       const dlBtn = document.getElementById("dl-btn");
       dlBtn.disabled = true;
       dlBtn.textContent = "Preparing...";
