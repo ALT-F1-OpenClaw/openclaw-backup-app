@@ -111,7 +111,29 @@ jobs:
             exit 0
           fi
           git commit -m "docs: add release tutorial + app screenshot for ${{ needs.gate.outputs.tag }} [skip ci]"
-          git push origin HEAD:main
+
+          # Avoid non-fast-forward failures when main moves during this job.
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git rebase origin/main || {
+              git rebase --abort || true
+              if [ "$attempt" -eq 3 ]; then
+                echo "Rebase failed after 3 attempts" >&2
+                exit 1
+              fi
+              sleep 2
+              continue
+            }
+            if git push origin HEAD:main; then
+              echo "Push succeeded on attempt $attempt"
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "Push failed after 3 attempts" >&2
+              exit 1
+            fi
+            sleep 2
+          done
 
       - name: Cleanup docs container
         if: always()
