@@ -11,117 +11,33 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
       background: #0d1117;
       color: #c9d1d9;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 24px 14px 34px;
     }
 
     .container {
-      text-align: center;
-      max-width: 420px;
-      padding: 2rem;
+      width: min(680px, 100%);
+      display: grid;
+      gap: 14px;
+    }
+
+    .panel {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 10px;
+      padding: 14px;
     }
 
     h1 {
-      font-size: 1.4rem;
+      font-size: 1.55rem;
       color: #58a6ff;
-      margin-bottom: 0.5rem;
+      margin-bottom: 4px;
     }
 
-    .subtitle {
-      font-size: 0.85rem;
-      color: #8b949e;
-      margin-bottom: 0.25rem;
-    }
-
-    .version {
-      font-size: 0.75rem;
-      color: #484f58;
-      margin-bottom: 2rem;
-    }
-
-    button {
-      background: #238636;
-      color: #fff;
-      border: 1px solid #2ea043;
-      padding: 12px 32px;
-      font-size: 1rem;
-      font-family: inherit;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background 0.15s;
-    }
-
-    button:hover { background: #2ea043; }
-
-    button:disabled {
-      background: #21262d;
-      border-color: #30363d;
-      color: #484f58;
-      cursor: not-allowed;
-    }
-
-    .status {
-      margin-top: 2rem;
-      padding: 1rem;
-      border-radius: 6px;
-      font-size: 0.85rem;
-      display: none;
-    }
-
-    .status.success {
-      display: block;
-      background: #0d1f0d;
-      border: 1px solid #238636;
-      color: #3fb950;
-    }
-
-    .status.error {
-      display: block;
-      background: #1f0d0d;
-      border: 1px solid #da3633;
-      color: #f85149;
-    }
-
-    .status .time {
-      color: #8b949e;
-      font-size: 0.75rem;
-      margin-top: 0.5rem;
-    }
-
-    .backup-scope {
-      margin-top: 1rem;
-      text-align: left;
-      background: #161b22;
-      border: 1px solid #30363d;
-      border-radius: 8px;
-      padding: 0.85rem;
-      font-size: 0.8rem;
-      color: #8b949e;
-    }
-
-    .backup-scope h3 {
-      color: #58a6ff;
-      font-size: 0.82rem;
-      margin-bottom: 0.45rem;
-    }
-
-    .backup-scope ul {
-      margin-left: 1rem;
-      line-height: 1.35;
-    }
-
-    .ro-badge {
-      display: inline-block;
-      margin-top: 0.5rem;
-      font-size: 0.72rem;
-      color: #3fb950;
-      border: 1px solid #238636;
-      border-radius: 999px;
-      padding: 2px 8px;
-    }
-
+    .subtitle { color: #8b949e; font-size: 0.9rem; }
+    .version { color: #6e7681; font-size: 0.78rem; margin-top: 4px; }
 
     .env-ribbon {
       position: fixed;
@@ -141,43 +57,160 @@
       pointer-events: none;
       user-select: none;
     }
-
     .env-dev { background: #1f6feb; border-color: #388bfd; }
     .env-staging { background: #9a6700; border-color: #d29922; }
     .env-production { background: #238636; border-color: #2ea043; }
 
+    .howto-title { color: #58a6ff; font-size: 0.95rem; margin-bottom: 6px; }
+    .howto li { margin-left: 18px; color: #9da7b2; line-height: 1.35; font-size: 0.84rem; }
+
+    .actions { display: grid; gap: 8px; }
+
+    button {
+      width: 100%;
+      border-radius: 8px;
+      border: 1px solid;
+      font-size: 0.98rem;
+      padding: 11px 14px;
+      color: #fff;
+      cursor: pointer;
+      font-family: inherit;
+      transition: filter .12s ease;
+    }
+
+    button:hover { filter: brightness(1.06); }
+    button:disabled {
+      background: #21262d !important;
+      border-color: #30363d !important;
+      color: #6e7681;
+      cursor: not-allowed;
+      filter: none;
+    }
+
+    #btn { background: #238636; border-color: #2ea043; }
+    #push-btn { background: #8957e5; border-color: #a371f7; }
+    #dl-btn { background: #1f6feb; border-color: #388bfd; }
+
+    .status {
+      border-radius: 8px;
+      font-size: 0.84rem;
+      padding: 10px;
+      display: none;
+      white-space: pre-wrap;
+      line-height: 1.35;
+    }
+
+    .status.success {
+      display: block;
+      background: #0d1f0d;
+      border: 1px solid #238636;
+      color: #3fb950;
+    }
+
+    .status.error {
+      display: block;
+      background: #1f0d0d;
+      border: 1px solid #da3633;
+      color: #f85149;
+    }
+
+    .status .time {
+      color: #8b949e;
+      font-size: 0.73rem;
+      margin-top: 5px;
+    }
+
+    details {
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 8px 10px;
+      background: #11161d;
+    }
+
+    summary {
+      color: #58a6ff;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      list-style: none;
+    }
+
+    summary::-webkit-details-marker { display: none; }
+    summary::after {
+      content: "▾";
+      float: right;
+      color: #8b949e;
+    }
+
+    details[open] summary::after { content: "▴"; }
+
+    .scope-list {
+      margin-top: 8px;
+      margin-left: 16px;
+      color: #9da7b2;
+      font-size: 0.81rem;
+      line-height: 1.4;
+    }
+
+    .ro-badge {
+      display: none;
+      margin-top: 8px;
+      font-size: 0.7rem;
+      color: #3fb950;
+      border: 1px solid #238636;
+      border-radius: 999px;
+      padding: 3px 9px;
+    }
+
     .spinner {
       display: inline-block;
-      width: 16px;
-      height: 16px;
-      border: 2px solid #484f58;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #6e7681;
       border-top-color: #58a6ff;
       border-radius: 50%;
-      animation: spin 0.6s linear infinite;
+      animation: spin .6s linear infinite;
       vertical-align: middle;
-      margin-right: 8px;
+      margin-right: 7px;
     }
 
     @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>OpenClaw Backup</h1>
-    <div id="env-ribbon" class="env-ribbon env-production">PRODUCTION</div>
-    <p class="subtitle">Configuration backup with redacted secrets</p>
-    <p id="version" class="version"></p>
-    <button id="btn" onclick="doBackup()">Backup Configuration</button>
-    <button id="push-btn" onclick="doPush()" style="background:#8957e5;border-color:#a371f7;margin-top:0.75rem;">Push to GitHub</button>
-    <button id="dl-btn" onclick="doDownload()" style="background:#1f6feb;border-color:#388bfd;margin-top:0.75rem;">Download Backup</button>
+  <div id="env-ribbon" class="env-ribbon env-production">PRODUCTION</div>
 
-    <div class="backup-scope">
-      <h3>What gets backed up</h3>
-      <ul id="backup-scope-list">
-        <li>Loading backup scope...</li>
-      </ul>
-      <span id="ro-badge" class="ro-badge" style="display:none;">READ-ONLY SOURCE MOUNTS</span>
-    </div>
+  <div class="container">
+    <section class="panel">
+      <h1>OpenClaw Backup</h1>
+      <p class="subtitle">Minimal backup control for OpenClaw configuration</p>
+      <p id="version" class="version"></p>
+    </section>
+
+    <section class="panel">
+      <div class="howto-title">What to do</div>
+      <ol class="howto">
+        <li>Click <strong>Backup Configuration</strong> to create a new snapshot.</li>
+        <li>Click <strong>Push to GitHub</strong> to save it remotely.</li>
+        <li>Use <strong>Download Backup</strong> for an offline archive.</li>
+      </ol>
+    </section>
+
+    <section class="panel actions">
+      <button id="btn" onclick="doBackup()">Backup Configuration</button>
+      <button id="push-btn" onclick="doPush()">Push to GitHub</button>
+      <button id="dl-btn" onclick="doDownload()">Download Backup</button>
+    </section>
+
+    <section class="panel">
+      <details>
+        <summary>What gets backed up</summary>
+        <ul id="backup-scope-list" class="scope-list">
+          <li>Loading backup scope...</li>
+        </ul>
+        <span id="ro-badge" class="ro-badge">READ-ONLY SOURCE MOUNTS</span>
+      </details>
+    </section>
 
     <div id="status" class="status"></div>
   </div>
@@ -201,32 +234,13 @@
         status.className = "status " + (res.ok ? "success" : "error");
         status.innerHTML = data.message +
           '<div class="time">' + new Date(data.time).toLocaleString() + "</div>";
-      } catch (err) {
+      } catch (_err) {
         status.className = "status error";
         status.innerHTML = "Connection failed";
       }
 
       btn.disabled = false;
       btn.textContent = "Backup Configuration";
-    }
-
-    async function loadStatus() {
-      try {
-        const res = await fetch("/api/status");
-        const data = await res.json();
-        if (data.version) {
-          document.getElementById("version").textContent = "v" + data.version;
-        }
-        const env = (data.environment || "production").toLowerCase();
-        const ribbon = document.getElementById("env-ribbon");
-        ribbon.textContent = env.toUpperCase();
-        ribbon.className = "env-ribbon env-" + (env === "dev" ? "dev" : env === "staging" ? "staging" : "production");
-        if (data.lastBackup) {
-          status.className = "status " + data.lastBackup.status;
-          status.innerHTML = data.lastBackup.message +
-            '<div class="time">' + new Date(data.lastBackup.time).toLocaleString() + "</div>";
-        }
-      } catch {}
     }
 
     async function doPush() {
@@ -258,13 +272,13 @@
       const dlBtn = document.getElementById("dl-btn");
       dlBtn.disabled = true;
       dlBtn.textContent = "Preparing...";
-      
+
       fetch("/api/download")
-        .then(res => {
+        .then((res) => {
           if (!res.ok) throw new Error("Download failed");
           return res.blob();
         })
-        .then(blob => {
+        .then((blob) => {
           const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
           a.href = url;
@@ -272,7 +286,7 @@
           a.click();
           URL.revokeObjectURL(url);
         })
-        .catch(err => {
+        .catch((err) => {
           status.className = "status error";
           status.innerHTML = "Download failed: " + err.message;
         })
@@ -280,6 +294,26 @@
           dlBtn.disabled = false;
           dlBtn.textContent = "Download Backup";
         });
+    }
+
+    async function loadStatus() {
+      try {
+        const res = await fetch("/api/status");
+        const data = await res.json();
+        if (data.version) {
+          document.getElementById("version").textContent = "v" + data.version;
+        }
+        const env = (data.environment || "production").toLowerCase();
+        const ribbon = document.getElementById("env-ribbon");
+        ribbon.textContent = env.toUpperCase();
+        ribbon.className = "env-ribbon env-" + (env === "dev" ? "dev" : env === "staging" ? "staging" : "production");
+
+        if (data.lastBackup) {
+          status.className = "status " + data.lastBackup.status;
+          status.innerHTML = data.lastBackup.message +
+            '<div class="time">' + new Date(data.lastBackup.time).toLocaleString() + "</div>";
+        }
+      } catch {}
     }
 
     async function loadBackupScope() {
@@ -292,9 +326,7 @@
         list.innerHTML = items.length
           ? items.map((item) => `<li><code>${item.source}</code>${item.note ? ` (${item.note})` : ""}</li>`).join("")
           : "<li>No scope metadata available.</li>";
-        if (data.readOnlySourceMounts) {
-          badge.style.display = "inline-block";
-        }
+        if (data.readOnlySourceMounts) badge.style.display = "inline-block";
       } catch {
         list.innerHTML = "<li>Could not load backup scope.</li>";
       }
