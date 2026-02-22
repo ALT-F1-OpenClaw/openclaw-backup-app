@@ -26,6 +26,21 @@ content = textwrap.dedent(
 
     Generated: {now}
 
+    ## Current use cases
+
+    The current OpenClaw Backup app is designed for these day-to-day operations:
+
+    - **One-click backup** of OpenClaw configuration and workspace metadata
+    - **Safe redaction** of sensitive values before storing backup snapshots
+    - **Git-based history** of backup snapshots for auditability and rollback
+    - **Push to remote backup repository** with auto-recovery on non-fast-forward
+    - **Downloadable archive export** for offline copy/transfer
+    - **Environment-aware operation** (dev/staging/production indicator)
+
+    ## Current application screenshot
+
+    ![Current running app UI](./{tag}-app.png)
+
     ## Scope
     - Release type: **{kind}**
     - Test status: **{status}**
@@ -35,10 +50,6 @@ content = textwrap.dedent(
     ![Update flow](../update-flow-4k.png)
 
     ![Dev vs Staging](../dev-staging-architecture-4k.png)
-
-    ## Running Application Screenshot
-
-    ![Running app UI](./{tag}-app.png)
 
     ## Operator Steps
     1. Confirm image published for `{tag}` in GHCR and `latest` updated.
