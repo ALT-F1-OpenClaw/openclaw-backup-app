@@ -34,6 +34,107 @@ docker compose up -d --build
 
 Open http://localhost:3100 and click **Backup Configuration**.
 
+## Manual operations runbook (step-by-step)
+
+This section explains how to do manually what the automation does.
+
+### 1) Release a new version manually
+
+```bash
+# from repo root
+npm version minor --no-git-tag-version   # or patch / major
+VERSION=$(node -p "require('./package.json').version")
+git add package.json package-lock.json
+git commit -m "chore: bump version to ${VERSION}"
+git tag "v${VERSION}"
+GIT_SSH_COMMAND="ssh -i ~/.ssh/openclaw-backup-bot-2026-02-21 -o StrictHostKeyChecking=accept-new" git push origin main --tags
+```
+
+What happens next:
+- `release-publish.yml` builds and pushes GHCR image (`vX.Y.Z` + `latest`)
+- `release-test.yml` and `release-docs.yml` run automatically for minor/major tags
+
+### 2) Force workflows manually (when needed)
+
+From GitHub UI:
+- Actions → **Release Publish (GHCR)** → Run workflow
+- Actions → **Release Test Environment** → Run workflow (optionally pass `tag`)
+- Actions → **Release Tutorial Docs** → Run workflow (optionally pass `tag`)
+
+From CLI:
+
+```bash
+gh workflow run "Release Test Environment" -f tag=v1.8.0
+gh workflow run "Release Tutorial Docs" -f tag=v1.8.0
+gh run list --limit 10
+gh run watch <run-id>
+```
+
+### 3) Update running environments manually
+
+Publish success does not replace running containers automatically. Recreate them:
+
+```bash
+backup-staging-restart   # port 3100 (GHCR image)
+backup-dev-restart       # port 3101 (local dev build)
+backup-all-restart       # both
+```
+
+Direct compose alternative:
+
+```bash
+# staging
+cd ~/.openclaw/deploy/openclaw-backup/staging
+docker compose pull
+docker compose up -d
+
+# dev
+cd ~/.openclaw/deploy/openclaw-backup/dev
+docker compose up -d --build
+```
+
+Verify:
+
+```bash
+curl http://127.0.0.1:3100/api/status
+curl http://127.0.0.1:3101/api/status
+```
+
+### 4) If Push to GitHub fails with "fetch first"
+
+The app now auto-heals this, but manual recovery is:
+
+```bash
+GIT_SSH_COMMAND="ssh -i ~/.ssh/openclaw-backup-bot-2026-02-21 -o StrictHostKeyChecking=accept-new"   git -C ~/.openclaw/data/openclaw-backup fetch origin master
+
+git -C ~/.openclaw/data/openclaw-backup reset --hard origin/master
+```
+
+Then click **Backup Configuration** and **Push to GitHub** again.
+
+### 5) Generate tutorial + screenshot manually
+
+```bash
+# generate tutorial markdown
+TAG=v1.8.0 KIND=minor TEST_STATUS=pass python3 scripts/release/generate_tutorial.py
+
+# run app locally for screenshot
+# (example endpoint: http://127.0.0.1:33110)
+npx -y playwright@1.52.0 install chromium
+npx -y playwright@1.52.0 screenshot --device="Desktop Chrome"   http://127.0.0.1:33110 docs/tutorials/v1.8.0-app.png
+```
+
+### 6) Service control (systemd user units)
+
+```bash
+systemctl --user status openclaw-backup-staging.service
+systemctl --user status openclaw-backup-dev.service
+systemctl --user restart openclaw-backup-staging.service
+systemctl --user restart openclaw-backup-dev.service
+backup-staging-logs
+backup-dev-logs
+```
+
 
 ## Visual guides
 
@@ -140,6 +241,7 @@ If `Push to GitHub` hits a non-fast-forward error (`[rejected] fetch first`), th
 5. retrying push.
 
 This avoids manual git recovery during normal app usage.
+
 
 ## API
 
