@@ -90,6 +90,38 @@
       margin-top: 0.5rem;
     }
 
+    .backup-scope {
+      margin-top: 1rem;
+      text-align: left;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 0.85rem;
+      font-size: 0.8rem;
+      color: #8b949e;
+    }
+
+    .backup-scope h3 {
+      color: #58a6ff;
+      font-size: 0.82rem;
+      margin-bottom: 0.45rem;
+    }
+
+    .backup-scope ul {
+      margin-left: 1rem;
+      line-height: 1.35;
+    }
+
+    .ro-badge {
+      display: inline-block;
+      margin-top: 0.5rem;
+      font-size: 0.72rem;
+      color: #3fb950;
+      border: 1px solid #238636;
+      border-radius: 999px;
+      padding: 2px 8px;
+    }
+
     .spinner {
       display: inline-block;
       width: 16px;
@@ -113,6 +145,20 @@
     <button id="btn" onclick="doBackup()">Backup Configuration</button>
     <button id="push-btn" onclick="doPush()" style="background:#8957e5;border-color:#a371f7;margin-top:0.75rem;">Push to GitHub</button>
     <button id="dl-btn" onclick="doDownload()" style="background:#1f6feb;border-color:#388bfd;margin-top:0.75rem;">Download Backup</button>
+
+    <div class="backup-scope">
+      <h3>What gets backed up</h3>
+      <ul>
+        <li><code>~/.openclaw/openclaw.json</code> (redacted)</li>
+        <li><code>~/.openclaw/node.json</code></li>
+        <li><code>~/.openclaw/agents/main/agent/auth*.json</code> (redacted)</li>
+        <li><code>~/.openclaw/identity/device-auth.json</code> (redacted)</li>
+        <li><code>~/.openclaw/workspace/*.md</code> + <code>memory/*.{md,json}</code></li>
+        <li><code>~/.openclaw/scripts/**/*.{sh,md}</code></li>
+      </ul>
+      <span class="ro-badge">READ-ONLY SOURCE MOUNTS</span>
+    </div>
+
     <div id="status" class="status"></div>
   </div>
 
