@@ -209,8 +209,35 @@ app.post("/api/push", async (_req, res) => {
 
     const branchSummary = await git.branchLocal();
     const branch = branchSummary.current || "master";
-    await git.push("origin", branch, ["--set-upstream"]);
-    res.json({ status: "success", message: `Pushed to ${REMOTE_URL}` });
+
+    try {
+      await git.push("origin", branch, ["--set-upstream"]);
+      return res.json({ status: "success", message: `Pushed to ${REMOTE_URL}` });
+    } catch (pushErr) {
+      const msg = String(pushErr?.message || pushErr || "");
+      const nonFastForward =
+        /non-fast-forward|fetch first|failed to push some refs|Updates were rejected/i.test(msg);
+
+      if (!nonFastForward) throw pushErr;
+
+      // Auto-heal divergent history: sync to remote head, recreate backup commit, push again.
+      await git.fetch("origin", branch);
+      await git.reset(["--hard", `origin/${branch}`]);
+
+      await collectFiles();
+      await git.add("-A");
+      const status = await git.status();
+      if (!status.isClean()) {
+        const timestamp = new Date().toISOString();
+        await git.commit(`Backup ${timestamp} (auto-resync)`);
+      }
+
+      await git.push("origin", branch, ["--set-upstream"]);
+      return res.json({
+        status: "success",
+        message: `Remote had new commits. Auto-resynced and pushed latest backup to ${REMOTE_URL}`,
+      });
+    }
   } catch (err) {
     res.status(500).json({ status: "error", message: err.message });
   }
