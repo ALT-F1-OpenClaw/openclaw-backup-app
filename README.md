@@ -35,6 +35,16 @@ docker compose up -d --build
 Open http://localhost:3100 and click **Backup Configuration**.
 
 
+## Visual guides
+
+### Update and deployment flow
+
+![OpenClaw Backup update flow](docs/update-flow-4k.png)
+
+### Dev vs Staging architecture
+
+![OpenClaw Backup dev vs staging architecture](docs/dev-staging-architecture-4k.png)
+
 ## Automatic Docker publishing (GitHub → GHCR)
 
 This repo auto-builds and publishes a Docker image to **GHCR** on version tags:
@@ -52,13 +62,54 @@ git tag v1.4.0
 GIT_SSH_COMMAND="ssh -i ~/.ssh/openclaw-backup-bot-2026-02-21 -o StrictHostKeyChecking=accept-new" git push origin main --tags
 ```
 
-### Runtime auto-update
+### Runtime update behavior
 
 `docker-compose.yml` uses:
 - `image: ghcr.io/alt-f1-openclaw/openclaw-backup-app:latest`
 - `pull_policy: always`
 
-So when you run `docker compose up -d`, Compose will pull the newest published image automatically.
+Important: publishing a new image does **not** magically replace an already-running container.
+You must recreate the container to run the new image:
+
+```bash
+docker compose pull
+docker compose up -d
+```
+
+Quick verification:
+
+```bash
+curl http://127.0.0.1:3100/api/status
+```
+
+## Environments
+
+### Staging (port 3100)
+- Image-based (`ghcr.io/...:latest`)
+- Production-like behavior
+
+### Dev (port 3101)
+- Local source build
+- Fast testing loop
+
+### Helper commands
+
+```bash
+backup-dev-restart
+backup-staging-restart
+backup-all-restart
+```
+
+## Push conflict auto-recovery (backup-data)
+
+If `Push to GitHub` hits a non-fast-forward error (`[rejected] fetch first`), the app now auto-heals by:
+1. fetching remote backup-data head,
+2. resetting local backup repo to remote,
+3. rebuilding backup files,
+4. creating a fresh backup commit,
+5. retrying push.
+
+This avoids manual git recovery during normal app usage.
 
 ## API
 
