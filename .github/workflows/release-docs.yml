@@ -44,9 +44,45 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: main
+
+      - name: Build + run app for screenshot
+        run: |
+          mkdir -p /tmp/oc/{config,workspace,backup,remote} docs/tutorials
+          echo '{"gateway":{"auth":{"token":"x"}}}' > /tmp/oc/config/openclaw.json
+          echo '{"node":"x"}' > /tmp/oc/config/node.json
+          echo '# memory' > /tmp/oc/workspace/MEMORY.md
+          mkdir -p /tmp/oc/workspace/memory
+          git init /tmp/oc/backup
+          git -C /tmp/oc/backup config user.email ci@example.com
+          git -C /tmp/oc/backup config user.name ci
+
+          docker build -t backup-app:docs .
+          docker run -d --name backup-docs -p 33110:3100 --user "$(id -u):$(id -g)" \
+            -e BACKUP_REMOTE_URL=/tmp/remote/backup-data.git \
+            -e SSH_KEY_NAME=ignored \
+            -v /tmp/oc/config:/config:ro \
+            -v /tmp/oc/workspace:/workspace:ro \
+            -v /tmp/oc/backup:/backup \
+            -v /tmp/oc/remote:/tmp/remote \
+            backup-app:docs
+
+          for i in {1..30}; do
+            curl -fsS http://127.0.0.1:33110/api/status && break || sleep 2
+          done
+
+      - name: Capture high-quality app screenshot
+        run: |
+          TAG='${{ needs.gate.outputs.tag }}'
+          sudo npx -y playwright@1.52.0 install-deps chromium
+          npx -y playwright@1.52.0 install chromium
+          npx -y playwright@1.52.0 screenshot --device="Desktop Chrome" --wait-for-timeout=1500 \
+            http://127.0.0.1:33110 docs/tutorials/${TAG}-app.png
+
       - name: Generate tutorial markdown
         run: |
-          TAG='${{ needs.gate.outputs.tag }}' KIND='${{ needs.gate.outputs.kind }}' TEST_STATUS='pending' python3 scripts/release/generate_tutorial.py
+          TAG='${{ needs.gate.outputs.tag }}' KIND='${{ needs.gate.outputs.kind }}' TEST_STATUS='pending' \
+            python3 scripts/release/generate_tutorial.py
+
       - name: Optional refresh images (hybrid)
         run: |
           if [ -n "${{ secrets.GEMINI_API_KEY }}" ]; then
@@ -54,22 +90,29 @@ jobs:
           else
             echo "No GEMINI_API_KEY; using static fallback images from repo."
           fi
+
       - name: Upload tutorial artifact
         uses: actions/upload-artifact@v4
         with:
           name: tutorial-${{ needs.gate.outputs.tag }}
           path: |
             docs/tutorials/${{ needs.gate.outputs.tag }}.md
+            docs/tutorials/${{ needs.gate.outputs.tag }}-app.png
             docs/update-flow-4k.png
             docs/dev-staging-architecture-4k.png
+
       - name: Commit tutorial to repo
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add docs/tutorials/${{ needs.gate.outputs.tag }}.md
+          git add docs/tutorials/${{ needs.gate.outputs.tag }}.md docs/tutorials/${{ needs.gate.outputs.tag }}-app.png
           if git diff --cached --quiet; then
             echo "No tutorial changes to commit"
             exit 0
           fi
-          git commit -m "docs: add release tutorial for ${{ needs.gate.outputs.tag }} [skip ci]"
+          git commit -m "docs: add release tutorial + app screenshot for ${{ needs.gate.outputs.tag }} [skip ci]"
           git push origin HEAD:main
+
+      - name: Cleanup docs container
+        if: always()
+        run: docker rm -f backup-docs || true
