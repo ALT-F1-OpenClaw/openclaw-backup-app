@@ -54,8 +54,12 @@ jobs:
           mkdir -p /tmp/oc/config/scripts
           echo '#!/bin/bash' > /tmp/oc/config/scripts/test.sh
           chmod +x /tmp/oc/config/scripts/test.sh
+          git init /tmp/oc/backup
+          git -C /tmp/oc/backup config user.email ci@example.com
+          git -C /tmp/oc/backup config user.name ci
           git init --bare /tmp/oc/remote/backup-data.git
           docker run -d --name backup-test -p 33100:3100 \
+            --user "$(id -u):$(id -g)" \
             -e BACKUP_REMOTE_URL=/tmp/remote/backup-data.git \
             -e SSH_KEY_NAME=ignored \
             -v /tmp/oc/config:/config:ro \
