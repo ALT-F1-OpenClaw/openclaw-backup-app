@@ -1,0 +1,75 @@
+name: Release Tutorial Docs
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to document (vX.Y.Z). Optional when manually running.'
+        required: false
+
+permissions:
+  contents: write
+  actions: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.vars.outputs.tag }}
+      kind: ${{ steps.vars.outputs.kind }}
+      should_run: ${{ steps.vars.outputs.should_run }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: vars
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.tag }}" ]; then TAG="${{ inputs.tag }}"; fi
+          eval "$(TAG=$TAG python3 scripts/release/tag_utils.py)"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "kind=$kind" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_run=true" >> $GITHUB_OUTPUT
+          else
+            echo "should_run=${run_auto}" >> $GITHUB_OUTPUT
+          fi
+
+  docs:
+    needs: gate
+    if: needs.gate.outputs.should_run == 'true'
+    continue-on-error: ${{ needs.gate.outputs.kind == 'minor' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Generate tutorial markdown
+        run: |
+          TAG='${{ needs.gate.outputs.tag }}' KIND='${{ needs.gate.outputs.kind }}' TEST_STATUS='pending' python3 scripts/release/generate_tutorial.py
+      - name: Optional refresh images (hybrid)
+        run: |
+          if [ -n "${{ secrets.GEMINI_API_KEY }}" ]; then
+            echo "GEMINI_API_KEY provided; keep existing 4K docs images as fallback-safe baseline."
+          else
+            echo "No GEMINI_API_KEY; using static fallback images from repo."
+          fi
+      - name: Upload tutorial artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: tutorial-${{ needs.gate.outputs.tag }}
+          path: |
+            docs/tutorials/${{ needs.gate.outputs.tag }}.md
+            docs/update-flow-4k.png
+            docs/dev-staging-architecture-4k.png
+      - name: Commit tutorial to repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/tutorials/${{ needs.gate.outputs.tag }}.md
+          if git diff --cached --quiet; then
+            echo "No tutorial changes to commit"
+            exit 0
+          fi
+          git commit -m "docs: add release tutorial for ${{ needs.gate.outputs.tag }} [skip ci]"
+          git push origin HEAD:main

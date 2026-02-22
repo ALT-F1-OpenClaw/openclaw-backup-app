@@ -1,0 +1,91 @@
+name: Release Test Environment
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to test (vX.Y.Z). Optional when manually running.'
+        required: false
+
+permissions:
+  contents: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.vars.outputs.tag }}
+      kind: ${{ steps.vars.outputs.kind }}
+      run_tests: ${{ steps.vars.outputs.run_tests }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: vars
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.tag }}" ]; then TAG="${{ inputs.tag }}"; fi
+          echo "TAG=$TAG" >> $GITHUB_ENV
+          eval "$(TAG=$TAG python3 scripts/release/tag_utils.py)"
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "kind=$kind" >> $GITHUB_OUTPUT
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "run_tests=true" >> $GITHUB_OUTPUT
+          else
+            echo "run_tests=${run_auto}" >> $GITHUB_OUTPUT
+          fi
+
+  test:
+    needs: gate
+    if: needs.gate.outputs.run_tests == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build image
+        run: docker build -t backup-app:test .
+      - name: Start test container
+        run: |
+          mkdir -p /tmp/oc/{config,workspace,memory,scripts,backup,remote}
+          echo '{"gateway":{"auth":{"token":"x"}}}' > /tmp/oc/config/openclaw.json
+          echo '{"node":"x"}' > /tmp/oc/config/node.json
+          echo '# memory' > /tmp/oc/workspace/MEMORY.md
+          mkdir -p /tmp/oc/workspace/memory
+          echo '# day' > /tmp/oc/workspace/memory/2026-02-22.md
+          mkdir -p /tmp/oc/config/scripts
+          echo '#!/bin/bash' > /tmp/oc/config/scripts/test.sh
+          chmod +x /tmp/oc/config/scripts/test.sh
+          git init /tmp/oc/backup
+          git -C /tmp/oc/backup config user.email ci@example.com
+          git -C /tmp/oc/backup config user.name ci
+          git init --bare /tmp/oc/remote/backup-data.git
+          docker run -d --name backup-test -p 33100:3100 \
+            --user "$(id -u):$(id -g)" \
+            -e BACKUP_REMOTE_URL=/tmp/remote/backup-data.git \
+            -e SSH_KEY_NAME=ignored \
+            -v /tmp/oc/config:/config:ro \
+            -v /tmp/oc/workspace:/workspace:ro \
+            -v /tmp/oc/backup:/backup \
+            -v /tmp/oc/remote:/tmp/remote \
+            backup-app:test
+      - name: Basic health + backup
+        run: |
+          for i in {1..20}; do curl -fsS http://127.0.0.1:33100/api/status && break || sleep 2; done
+          curl -fsS -X POST http://127.0.0.1:33100/api/backup
+      - name: Create divergence + validate push auto-resync
+        run: |
+          git clone /tmp/oc/remote/backup-data.git /tmp/oc/other
+          cd /tmp/oc/other
+          git config user.email ci@example.com
+          git config user.name ci
+          echo x > remote.txt
+          git add remote.txt && git commit -m remote && git push origin master
+          curl -fsS -X POST http://127.0.0.1:33100/api/push | tee /tmp/push.json
+          grep -E 'success|Auto-resynced|Pushed' /tmp/push.json
+      - name: Verify read-only source mounts
+        run: |
+          MOUNTS=$(docker inspect backup-test --format '{{json .Mounts}}')
+          echo "$MOUNTS" | grep '"Destination":"/config"' | grep '"RW":false'
+          echo "$MOUNTS" | grep '"Destination":"/workspace"' | grep '"RW":false'
+      - name: Cleanup
+        if: always()
+        run: docker rm -f backup-test || true
