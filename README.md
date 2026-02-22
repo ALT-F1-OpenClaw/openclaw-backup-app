@@ -34,6 +34,32 @@ docker compose up -d --build
 
 Open http://localhost:3100 and click **Backup Configuration**.
 
+
+## Automatic Docker publishing (GitHub → GHCR)
+
+This repo auto-builds and publishes a Docker image to **GHCR** on version tags:
+
+- Workflow: `.github/workflows/docker-publish.yml`
+- Trigger: push tag `v*` (example: `v1.4.0`)
+- Image: `ghcr.io/alt-f1-openclaw/openclaw-backup-app`
+- Tags published: `vX.Y.Z` and `latest`
+
+### Release flow
+
+```bash
+# after bumping version + commit
+git tag v1.4.0
+GIT_SSH_COMMAND="ssh -i ~/.ssh/openclaw-backup-bot-2026-02-21 -o StrictHostKeyChecking=accept-new" git push origin main --tags
+```
+
+### Runtime auto-update
+
+`docker-compose.yml` uses:
+- `image: ghcr.io/alt-f1-openclaw/openclaw-backup-app:latest`
+- `pull_policy: always`
+
+So when you run `docker compose up -d`, Compose will pull the newest published image automatically.
+
 ## API
 
 | Endpoint | Method | Description |

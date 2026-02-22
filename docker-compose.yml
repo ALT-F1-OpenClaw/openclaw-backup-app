@@ -1,6 +1,7 @@
 services:
   openclaw-backup:
-    build: .
+    image: ghcr.io/alt-f1-openclaw/openclaw-backup-app:latest
+    pull_policy: always
     user: "${UID:-1000}:${GID:-1000}"
     container_name: openclaw-backup
     ports:
