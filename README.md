@@ -45,20 +45,50 @@ Open http://localhost:3100 and click **Backup Configuration**.
 
 ![OpenClaw Backup dev vs staging architecture](docs/dev-staging-architecture-4k.png)
 
-## Automatic Docker publishing (GitHub → GHCR)
+## Release automation (how it works)
 
-This repo auto-builds and publishes a Docker image to **GHCR** on version tags:
+This repo now uses **3 workflows** instead of one:
 
-- Workflow: `.github/workflows/docker-publish.yml`
-- Trigger: push tag `v*` (example: `v1.4.0`)
-- Image: `ghcr.io/alt-f1-openclaw/openclaw-backup-app`
-- Tags published: `vX.Y.Z` and `latest`
+1. **Publish image** → `.github/workflows/release-publish.yml`
+2. **Run release tests** → `.github/workflows/release-test.yml`
+3. **Generate tutorial docs** → `.github/workflows/release-docs.yml`
+
+### Trigger rules
+
+- Tags `vX.Y.0` (minor) and `vX.0.0` (major): run automatically.
+- Patch tags `vX.Y.Z` with `Z>0`: publish image, while test/docs are manual by default.
+- Manual `workflow_dispatch`: always available.
+
+### What each workflow does
+
+#### 1) `release-publish.yml`
+- Builds and pushes image to GHCR:
+  - `ghcr.io/alt-f1-openclaw/openclaw-backup-app:vX.Y.Z`
+  - `ghcr.io/alt-f1-openclaw/openclaw-backup-app:latest`
+
+#### 2) `release-test.yml` (full test environment)
+- Builds a test image
+- Starts ephemeral container
+- Validates:
+  - container startup + `/api/status`
+  - `/api/backup`
+  - push auto-resync behavior on non-fast-forward
+  - read-only mount flags for `/config` and `/workspace`
+
+#### 3) `release-docs.yml`
+- Generates release tutorial markdown in `docs/tutorials/`
+- Uploads tutorial/images as workflow artifacts
+- Commits tutorial file back to `main`
+- Docs job policy:
+  - **major** release: strict (fails pipeline if docs fail)
+  - **minor** release: warning mode (continue-on-error)
 
 ### Release flow
 
 ```bash
 # after bumping version + commit
-git tag v1.4.0
+VERSION=$(node -p "require('./package.json').version")
+git tag "v${VERSION}"
 GIT_SSH_COMMAND="ssh -i ~/.ssh/openclaw-backup-bot-2026-02-21 -o StrictHostKeyChecking=accept-new" git push origin main --tags
 ```
 
@@ -68,7 +98,7 @@ GIT_SSH_COMMAND="ssh -i ~/.ssh/openclaw-backup-bot-2026-02-21 -o StrictHostKeyCh
 - `image: ghcr.io/alt-f1-openclaw/openclaw-backup-app:latest`
 - `pull_policy: always`
 
-Important: publishing a new image does **not** magically replace an already-running container.
+Important: publishing a new image does **not** replace an already-running container.
 You must recreate the container to run the new image:
 
 ```bash
