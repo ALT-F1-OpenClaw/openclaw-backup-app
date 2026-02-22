@@ -93,6 +93,71 @@ This bumps `package.json` version, generates `CHANGELOG.md`, creates a git commi
 - **Process manager**: tini (proper PID 1 signal handling)
 - **UI**: Vanilla HTML/CSS/JS, dark theme
 
+## Notifications — GitHub → Discord Webhook
+
+This repository is connected to a Discord channel via GitHub Webhooks for real-time activity notifications.
+
+```
+┌──────────────────────┐         HTTPS POST          ┌──────────────────────┐
+│                      │  (push, PR, issue, release)  │                      │
+│   GitHub             │ ──────────────────────────►  │   Discord            │
+│   ALT-F1-OpenClaw/   │                              │   #dev-activity      │
+│   openclaw-backup-app│  Payload: application/json   │   (webhook)          │
+│                      │  Endpoint: /github suffix    │                      │
+└──────────────────────┘                              └──────────────────────┘
+```
+
+### How it works
+
+1. **GitHub fires a webhook** on every push, pull request, issue, or release event
+2. **Discord receives the payload** at a webhook URL with the `/github` suffix
+3. **Discord formats the event** natively (commit messages, PR titles, issue labels, etc.)
+
+### Events tracked
+
+| Event | Trigger | What appears in Discord |
+|-------|---------|------------------------|
+| Push | Code pushed to any branch | Commit hash, message, author, branch |
+| Pull Request | Opened, merged, closed | PR title, author, status, link |
+| Issues | Opened, closed, commented | Issue title, labels, assignee |
+| Release | New release published | Version, release notes |
+
+### Setup (for engineers)
+
+To replicate this webhook on a new repo:
+
+1. Go to your GitHub repo → **Settings** → **Webhooks** → **Add webhook**
+2. **Payload URL:** `<Discord webhook URL>/github` (the `/github` suffix is required for Discord formatting)
+3. **Content type:** `application/json`
+4. **Secret:** leave empty (the webhook URL token acts as authentication)
+5. **Events:** "Send me everything" or select specific events
+6. Click **Add webhook**
+
+To create the Discord webhook:
+1. Go to the Discord channel → **Edit Channel** → **Integrations** → **Webhooks**
+2. Click **New Webhook**, name it `GitHub`, copy the URL
+
+### Architecture context
+
+```
+┌─────────────────────────────────────────────────────┐
+│  ALT-F1-004 (WSL2)                                 │
+│                                                     │
+│  OpenClaw Gateway (:18789)                          │
+│  ├── Agent (Claude Opus 4)                          │
+│  ├── Discord Bot ──► #bot-openclaw-setup            │
+│  │                   #bot-general                   │
+│  │                   #cron-logs                     │
+│  │                   #dev-activity ◄── GitHub WHK   │
+│  └── Backup App (Docker :3100) ──► this repo        │
+│                                                     │
+│  GitHub (ALT-F1-OpenClaw org)                       │
+│  ├── openclaw-backup-app ──webhook──► #dev-activity │
+│  ├── openclaw-backup-data (backup storage)          │
+│  └── altf1be-hubspot-openclaw ──webhook──► same     │
+└─────────────────────────────────────────────────────┘
+```
+
 ## Security
 
 The Docker container is hardened with:
