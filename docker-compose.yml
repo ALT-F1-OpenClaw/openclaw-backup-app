@@ -12,6 +12,7 @@ services:
       - ./backup-data:/backup
       - ~/.ssh:/ssh:ro
     environment:
+      - BACKUP_APP_ENV=production
       - BACKUP_REMOTE_URL=git@github.com:ALT-F1-OpenClaw/openclaw-backup-data.git
       - SSH_KEY_NAME=openclaw-backup-bot-2026-02-21
       - GIT_SSH_COMMAND=ssh -i /ssh/openclaw-backup-bot-2026-02-21 -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/tmp/known_hosts

@@ -7,6 +7,7 @@ const { version } = require("./package.json");
 
 const app = express();
 const PORT = 3100;
+const APP_ENV = String(process.env.BACKUP_APP_ENV || "production").toLowerCase();
 const BACKUP_DIR = "/backup";
 const CONFIG_DIR = "/config";
 const WORKSPACE_DIR = "/workspace";
@@ -16,6 +17,17 @@ const SSH_KEY_NAME = process.env.SSH_KEY_NAME || "id_ed25519";
 const GIT_SSH_COMMAND = `ssh -i /ssh/${SSH_KEY_NAME} -o StrictHostKeyChecking=accept-new -o UserKnownHostsFile=/tmp/known_hosts`;
 
 const SENSITIVE_PATTERN = /token|key|password|secret|access|refresh|authorization|cookie/i;
+
+const BACKUP_SCOPE = [
+  { source: "~/.openclaw/openclaw.json", note: "redacted" },
+  { source: "~/.openclaw/node.json", note: "as-is" },
+  { source: "~/.openclaw/agents/main/agent/auth-profiles.json", note: "redacted" },
+  { source: "~/.openclaw/agents/main/agent/auth.json", note: "redacted" },
+  { source: "~/.openclaw/identity/device-auth.json", note: "redacted" },
+  { source: "~/.openclaw/workspace/*.md", note: "workspace top-level docs" },
+  { source: "~/.openclaw/workspace/memory/*.{md,json}", note: "memory notes + state" },
+  { source: "~/.openclaw/scripts/**/*.{sh,md}", note: "automation scripts + docs" },
+];
 
 function redactJson(obj) {
   if (Array.isArray(obj)) return obj.map(redactJson);
@@ -155,7 +167,15 @@ let lastBackup = null;
 app.use(express.static("public"));
 
 app.get("/api/status", (_req, res) => {
-  res.json({ version, lastBackup });
+  res.json({ version, environment: APP_ENV, lastBackup });
+});
+
+
+app.get("/api/backup-scope", (_req, res) => {
+  res.json({
+    readOnlySourceMounts: true,
+    items: BACKUP_SCOPE,
+  });
 });
 
 app.post("/api/backup", async (_req, res) => {

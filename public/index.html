@@ -122,6 +122,30 @@
       padding: 2px 8px;
     }
 
+
+    .env-ribbon {
+      position: fixed;
+      top: 14px;
+      right: -48px;
+      width: 180px;
+      text-align: center;
+      transform: rotate(45deg);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      padding: 6px 0;
+      color: #fff;
+      border: 1px solid transparent;
+      z-index: 999;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.35);
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .env-dev { background: #1f6feb; border-color: #388bfd; }
+    .env-staging { background: #9a6700; border-color: #d29922; }
+    .env-production { background: #238636; border-color: #2ea043; }
+
     .spinner {
       display: inline-block;
       width: 16px;
@@ -140,6 +164,7 @@
 <body>
   <div class="container">
     <h1>OpenClaw Backup</h1>
+    <div id="env-ribbon" class="env-ribbon env-production">PRODUCTION</div>
     <p class="subtitle">Configuration backup with redacted secrets</p>
     <p id="version" class="version"></p>
     <button id="btn" onclick="doBackup()">Backup Configuration</button>
@@ -148,15 +173,10 @@
 
     <div class="backup-scope">
       <h3>What gets backed up</h3>
-      <ul>
-        <li><code>~/.openclaw/openclaw.json</code> (redacted)</li>
-        <li><code>~/.openclaw/node.json</code></li>
-        <li><code>~/.openclaw/agents/main/agent/auth*.json</code> (redacted)</li>
-        <li><code>~/.openclaw/identity/device-auth.json</code> (redacted)</li>
-        <li><code>~/.openclaw/workspace/*.md</code> + <code>memory/*.{md,json}</code></li>
-        <li><code>~/.openclaw/scripts/**/*.{sh,md}</code></li>
+      <ul id="backup-scope-list">
+        <li>Loading backup scope...</li>
       </ul>
-      <span class="ro-badge">READ-ONLY SOURCE MOUNTS</span>
+      <span id="ro-badge" class="ro-badge" style="display:none;">READ-ONLY SOURCE MOUNTS</span>
     </div>
 
     <div id="status" class="status"></div>
@@ -197,6 +217,10 @@
         if (data.version) {
           document.getElementById("version").textContent = "v" + data.version;
         }
+        const env = (data.environment || "production").toLowerCase();
+        const ribbon = document.getElementById("env-ribbon");
+        ribbon.textContent = env.toUpperCase();
+        ribbon.className = "env-ribbon env-" + (env === "dev" ? "dev" : env === "staging" ? "staging" : "production");
         if (data.lastBackup) {
           status.className = "status " + data.lastBackup.status;
           status.innerHTML = data.lastBackup.message +
@@ -258,7 +282,26 @@
         });
     }
 
+    async function loadBackupScope() {
+      const list = document.getElementById("backup-scope-list");
+      const badge = document.getElementById("ro-badge");
+      try {
+        const res = await fetch("/api/backup-scope");
+        const data = await res.json();
+        const items = Array.isArray(data.items) ? data.items : [];
+        list.innerHTML = items.length
+          ? items.map((item) => `<li><code>${item.source}</code>${item.note ? ` (${item.note})` : ""}</li>`).join("")
+          : "<li>No scope metadata available.</li>";
+        if (data.readOnlySourceMounts) {
+          badge.style.display = "inline-block";
+        }
+      } catch {
+        list.innerHTML = "<li>Could not load backup scope.</li>";
+      }
+    }
+
     loadStatus();
+    loadBackupScope();
   </script>
 </body>
 </html>

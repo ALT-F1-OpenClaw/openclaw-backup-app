@@ -148,6 +148,11 @@ backup-dev-logs
 
 ## Release automation (how it works)
 
+### Tutorial generation workflow
+
+![Release tutorial generation workflow](docs/tutorial-generation-flow-4k.png)
+
+
 This repo now uses **3 workflows** instead of one:
 
 1. **Publish image** → `.github/workflows/release-publish.yml`
