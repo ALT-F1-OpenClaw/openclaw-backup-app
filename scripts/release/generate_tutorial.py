@@ -36,6 +36,10 @@ content = textwrap.dedent(
 
     ![Dev vs Staging](../dev-staging-architecture-4k.png)
 
+    ## Running Application Screenshot
+
+    ![Running app UI](./{tag}-app.png)
+
     ## Operator Steps
     1. Confirm image published for `{tag}` in GHCR and `latest` updated.
     2. Restart environments:
