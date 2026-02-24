@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [commit-and-tag-version](https://github.com/absolute-version/commit-and-tag-version) for commit guidelines.
 
+## [2.0.0](https://github.com/ALT-F1-OpenClaw/openclaw-backup-app/compare/v1.12.0...v2.0.0) (2026-02-24)
+
+
+### Features
+
+* add advanced backup and restore assistant with script-driven flow ([c409407](https://github.com/ALT-F1-OpenClaw/openclaw-backup-app/commit/c4094074543e24e05c53ef3f7f71f9cd15a76b0a))
+
 ## [1.3.0](https://github.com/ALT-F1-OpenClaw/openclaw-backup-app/compare/v1.2.1...v1.3.0) (2026-02-22)
 
 
