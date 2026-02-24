@@ -203,6 +203,47 @@
     </section>
 
     <section class="panel">
+      <div class="howto-title">Advanced backup (script mode)</div>
+      <div style="display:grid; gap:8px; margin-top:8px;">
+        <label style="font-size:0.82rem; color:#9da7b2;">Output directory (absolute path)</label>
+        <input id="adv-outdir" type="text" value="/backup" style="background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:6px;padding:8px;" />
+
+        <label style="display:flex; gap:8px; align-items:center; font-size:0.82rem; color:#9da7b2;">
+          <input id="adv-encrypt" type="checkbox" checked /> Encrypt backup (.gpg)
+        </label>
+        <label style="display:flex; gap:8px; align-items:center; font-size:0.82rem; color:#9da7b2;">
+          <input id="adv-agents" type="checkbox" /> Include agents/session state
+        </label>
+
+        <label style="font-size:0.82rem; color:#9da7b2;">Passphrase (optional, for non-interactive mode)</label>
+        <input id="adv-passphrase" type="password" placeholder="staging-test-pass" style="background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:6px;padding:8px;" />
+
+        <button id="adv-btn" onclick="doAdvancedBackup()" style="background:#9a6700;border-color:#d29922;">Run Advanced Backup Script</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="howto-title">Restore assistant</div>
+      <div style="display:grid; gap:8px; margin-top:8px;">
+        <label style="font-size:0.82rem; color:#9da7b2;">Backup directory to scan</label>
+        <input id="restore-dir" type="text" value="/backup" style="background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:6px;padding:8px;" />
+        <button id="restore-list-btn" onclick="loadRestoreFiles()" style="background:#1f6feb;border-color:#388bfd;">List Backup Files</button>
+
+        <label style="font-size:0.82rem; color:#9da7b2;">Select backup file</label>
+        <select id="restore-file" style="background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:6px;padding:8px;"></select>
+
+        <label style="font-size:0.82rem; color:#9da7b2;">Restore passphrase (only if .gpg)</label>
+        <input id="restore-passphrase" type="password" placeholder="optional" style="background:#0d1117;color:#c9d1d9;border:1px solid #30363d;border-radius:6px;padding:8px;" />
+
+        <label style="display:flex; gap:8px; align-items:center; font-size:0.82rem; color:#9da7b2;">
+          <input id="restore-apply" type="checkbox" /> Generate APPLY command (otherwise DRY-RUN)
+        </label>
+
+        <button id="restore-generate-btn" onclick="generateRestoreCommand()" style="background:#8957e5;border-color:#a371f7;">Generate Restore Command</button>
+      </div>
+    </section>
+
+    <section class="panel">
       <details>
         <summary>What gets backed up</summary>
         <ul id="backup-scope-list" class="scope-list">
@@ -296,6 +337,58 @@
         });
     }
 
+    async function doAdvancedBackup() {
+      const outDir = document.getElementById("adv-outdir").value.trim();
+      const encrypt = document.getElementById("adv-encrypt").checked;
+      const withAgents = document.getElementById("adv-agents").checked;
+      const passphrase = document.getElementById("adv-passphrase").value.trim();
+
+      if (!outDir.startsWith("/")) {
+        status.className = "status error";
+        status.innerHTML = "Output directory must be an absolute path (example: /tmp/openclaw-backup-staging-test)";
+        return;
+      }
+
+      if (encrypt && !passphrase) {
+        status.className = "status error";
+        status.innerHTML = "Passphrase is required when encryption is enabled.";
+        return;
+      }
+
+      const ok = window.confirm("Run advanced backup script now?\n\nThis will execute backup-openclaw.sh with the selected parameters.");
+      if (!ok) return;
+
+      const advBtn = document.getElementById("adv-btn");
+      advBtn.disabled = true;
+      advBtn.innerHTML = '<span class="spinner"></span>Running script...';
+
+      try {
+        const res = await fetch("/api/backup-script", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ outDir, encrypt, withAgents, passphrase }),
+        });
+        const raw = await res.text();
+        let data;
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          throw new Error(`Unexpected non-JSON response (HTTP ${res.status}): ${raw.slice(0, 300)}`);
+        }
+
+        status.className = "status " + (res.ok ? "success" : "error");
+        const out = data.output ? `\n\n${data.output}` : "";
+        const errOut = data.errorOutput ? `\n\n${data.errorOutput}` : "";
+        status.textContent = `${data.message || "Done"}${out}${errOut}`;
+      } catch (err) {
+        status.className = "status error";
+        status.textContent = "Advanced backup failed: " + err.message;
+      } finally {
+        advBtn.disabled = false;
+        advBtn.textContent = "Run Advanced Backup Script";
+      }
+    }
+
     async function loadStatus() {
       try {
         const res = await fetch("/api/status");
@@ -332,8 +425,68 @@
       }
     }
 
+    async function loadRestoreFiles() {
+      const dir = document.getElementById("restore-dir").value.trim();
+      const sel = document.getElementById("restore-file");
+      sel.innerHTML = "";
+      try {
+        const res = await fetch(`/api/restore/files?dir=${encodeURIComponent(dir)}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Failed to list files");
+
+        const files = data.files || [];
+        if (!files.length) {
+          const opt = document.createElement("option");
+          opt.value = "";
+          opt.textContent = "No backup files found";
+          sel.appendChild(opt);
+          return;
+        }
+
+        files.forEach((f) => {
+          const opt = document.createElement("option");
+          opt.value = f.path;
+          const kb = (f.size / 1024).toFixed(1);
+          opt.textContent = `${f.name} (${kb} KB)`;
+          sel.appendChild(opt);
+        });
+      } catch (err) {
+        status.className = "status error";
+        status.textContent = "Could not list backup files: " + err.message;
+      }
+    }
+
+    async function generateRestoreCommand() {
+      const archivePath = document.getElementById("restore-file").value;
+      const passphrase = document.getElementById("restore-passphrase").value.trim();
+      const apply = document.getElementById("restore-apply").checked;
+
+      if (!archivePath) {
+        status.className = "status error";
+        status.textContent = "Select a backup file first.";
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/restore/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ archivePath, passphrase, apply }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message || "Failed to generate restore command");
+
+        status.className = "status success";
+        status.textContent = `${data.steps.join("\n")}\n\nGenerated command:\n${data.command}\n\nExecutable command:\n${data.runNowCommand}`;
+      } catch (err) {
+        status.className = "status error";
+        status.textContent = "Restore command generation failed: " + err.message;
+      }
+    }
+
     loadStatus();
     loadBackupScope();
+    loadRestoreFiles();
   </script>
 </body>
 </html>
