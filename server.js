@@ -11,6 +11,7 @@ const APP_ENV = String(process.env.BACKUP_APP_ENV || "production").toLowerCase()
 const BACKUP_DIR = "/backup";
 const CONFIG_DIR = "/config";
 const WORKSPACE_DIR = "/workspace";
+const SCRIPT_BACKUP_PATH = process.env.BACKUP_SCRIPT_PATH || "/app/scripts/backup-openclaw.sh";
 // OpenClaw home is mounted at /config inside the container.
 const REMOTE_URL = process.env.BACKUP_REMOTE_URL || "";
 const SSH_KEY_NAME = process.env.SSH_KEY_NAME || "id_ed25519";
@@ -164,6 +165,7 @@ async function collectFiles() {
 
 let lastBackup = null;
 
+app.use(express.json());
 app.use(express.static("public"));
 
 app.get("/api/status", (_req, res) => {
@@ -200,6 +202,62 @@ app.post("/api/backup", async (_req, res) => {
   } catch (err) {
     lastBackup = { time: new Date().toISOString(), status: "error", message: err.message };
     res.status(500).json(lastBackup);
+  }
+});
+
+app.post("/api/backup-script", async (req, res) => {
+  try {
+    const body = req.body || {};
+    const outDir = String(body.outDir || "").trim();
+    const encrypt = Boolean(body.encrypt);
+    const withAgents = Boolean(body.withAgents);
+    const passphrase = typeof body.passphrase === "string" ? body.passphrase.trim() : "";
+
+    if (!outDir) {
+      return res.status(400).json({ status: "error", message: "outDir is required" });
+    }
+
+    if (!path.isAbsolute(outDir)) {
+      return res.status(400).json({ status: "error", message: "outDir must be an absolute path" });
+    }
+
+    if (encrypt && !passphrase) {
+      return res.status(400).json({ status: "error", message: "Passphrase is required when encryption is enabled (non-interactive mode)." });
+    }
+
+    const args = ["--out-dir", JSON.stringify(outDir)];
+    if (withAgents) args.push("--with-agents");
+    if (encrypt) args.push("--encrypt");
+    if (passphrase) args.push("--passphrase", JSON.stringify(passphrase));
+
+    const cmd = `${JSON.stringify(SCRIPT_BACKUP_PATH)} ${args.join(" ")}`;
+    const output = execSync(cmd, {
+      timeout: 120000,
+      env: {
+        ...process.env,
+        HOME: process.env.HOME || "/home/abo",
+        GNUPGHOME: process.env.GNUPGHOME || "/tmp/.gnupg",
+        OPENCLAW_MAIN_DIR: process.env.OPENCLAW_MAIN_DIR || "/config",
+        OPENCLAW_PITAGONE_DIR: process.env.OPENCLAW_PITAGONE_DIR || "/config-pitagone",
+        OPENCLAW_ENV_DIR: process.env.OPENCLAW_ENV_DIR || "/config-openclaw-env",
+        OPENCLAW_SYSTEMD_USER_DIR: process.env.OPENCLAW_SYSTEMD_USER_DIR || "/config-systemd-user",
+      },
+      encoding: "utf8",
+    });
+
+    return res.json({
+      status: "success",
+      message: "Script backup completed",
+      command: `${SCRIPT_BACKUP_PATH} --out-dir ${outDir}${withAgents ? " --with-agents" : ""}${encrypt ? " --encrypt" : ""}${passphrase ? " --passphrase ******" : ""}`,
+      output,
+    });
+  } catch (err) {
+    return res.status(500).json({
+      status: "error",
+      message: err.message,
+      output: err.stdout || "",
+      errorOutput: err.stderr || "",
+    });
   }
 });
 
@@ -260,6 +318,63 @@ app.post("/api/push", async (_req, res) => {
     }
   } catch (err) {
     res.status(500).json({ status: "error", message: err.message });
+  }
+});
+
+app.get("/api/restore/files", async (req, res) => {
+  try {
+    const dir = String(req.query.dir || "/backup").trim();
+    if (!path.isAbsolute(dir)) {
+      return res.status(400).json({ status: "error", message: "dir must be an absolute path" });
+    }
+
+    const entries = await fs.readdir(dir, { withFileTypes: true }).catch(() => []);
+    const files = [];
+    for (const e of entries) {
+      if (!e.isFile()) continue;
+      if (!e.name.endsWith(".tar.gz") && !e.name.endsWith(".tar.gz.gpg")) continue;
+      const fullPath = path.join(dir, e.name);
+      const st = await fs.stat(fullPath);
+      files.push({ name: e.name, path: fullPath, size: st.size, mtime: st.mtime.toISOString() });
+    }
+    files.sort((a, b) => new Date(b.mtime) - new Date(a.mtime));
+    return res.json({ status: "success", dir, files });
+  } catch (err) {
+    return res.status(500).json({ status: "error", message: err.message });
+  }
+});
+
+app.post("/api/restore/generate", async (req, res) => {
+  try {
+    const body = req.body || {};
+    const archivePath = String(body.archivePath || "").trim();
+    const passphrase = typeof body.passphrase === "string" ? body.passphrase.trim() : "";
+    const apply = Boolean(body.apply);
+
+    if (!archivePath || !path.isAbsolute(archivePath)) {
+      return res.status(400).json({ status: "error", message: "archivePath absolute path is required" });
+    }
+
+    const safePass = passphrase ? " --passphrase '******'" : "";
+    const mode = apply ? "--apply" : "--dry-run";
+    const command = `/app/scripts/restore-openclaw.sh --archive '${archivePath}'${safePass} ${mode}`;
+
+    const steps = [
+      "1) Review selected backup archive",
+      "2) Run dry-run first",
+      "3) Run apply mode when satisfied",
+      "4) Reload/restart services",
+      "5) Verify gateway status on both instances",
+    ];
+
+    return res.json({
+      status: "success",
+      command,
+      runNowCommand: `/app/scripts/restore-openclaw.sh --archive '${archivePath}'${passphrase ? ` --passphrase '${passphrase.replace(/'/g, "'\\''")}'` : ""} ${mode}`,
+      steps,
+    });
+  } catch (err) {
+    return res.status(500).json({ status: "error", message: err.message });
   }
 });
 
